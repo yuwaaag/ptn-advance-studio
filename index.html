@@ -8,7 +8,12 @@
         
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Noto Sans Devanagari', sans-serif; }
         
-        #reporter-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; background: #000; }
+        /* वीडियो प्लेयर: अब ज़ूम नहीं होगा, ओरिजिनल रेश्यो में रहेगा */
+        #reporter-video { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            object-fit: contain; z-index: 1; background: #000; 
+            transition: opacity 0.5s ease-in-out;
+        }
 
         /* PCR कंट्रोल पैनल (बटन) */
         .pcr-controls {
@@ -20,28 +25,66 @@
             background: rgba(204, 0, 0, 0.8); color: white; border: 2px solid #ffcc00;
             padding: 10px 20px; font-size: 18px; font-weight: bold; cursor: pointer;
             border-radius: 5px; transition: 0.3s; pointer-events: all;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         .pcr-btn:hover { background: #ffcc00; color: black; }
         .pcr-btn.active { background: #008000; border-color: white; }
 
-        /* ओवरले डिज़ाइन */
+        /* ओवरले डिज़ाइन */
         .ui-overlay { position: relative; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
-        .breaking-tag { position: absolute; top: 50px; left: 0; background: linear-gradient(90deg, #cc0000, #ff0000); color: #fff; padding: 15px 40px; font-size: 40px; font-weight: 900; border-right: 10px solid #ffcc00; }
-        .rep-label { position: absolute; bottom: 160px; left: 20px; background: rgba(0,0,0,0.85); color: #ffcc00; padding: 8px 25px; font-size: 26px; border-left: 6px solid #ffcc00; }
-        .headline-box { width: 100%; height: 140px; background: rgba(0,0,0,0.95); border-top: 6px solid #ffcc00; display: flex; align-items: center; overflow: hidden; position: absolute; bottom: 0; }
-        .ticker-wrap { width: 100%; overflow: hidden; }
-        .headline-text { display: inline-block; white-space: nowrap; color: #fff; font-size: 48px; font-weight: 800; padding-left: 100%; animation: ticker linear infinite; }
         
-        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        .breaking-tag { 
+            position: absolute; top: 50px; left: 0; 
+            background: linear-gradient(90deg, #cc0000, #ff0000); 
+            color: #fff; padding: 15px 40px; font-size: 40px; font-weight: 900; 
+            border-right: 10px solid #ffcc00; 
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
 
-        #start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #ffcc00; }
+        .rep-label { 
+            position: absolute; bottom: 160px; left: 20px; 
+            background: rgba(0,0,0,0.85); color: #ffcc00; 
+            padding: 8px 25px; font-size: 26px; border-left: 6px solid #ffcc00;
+        }
+
+        .headline-box { 
+            width: 100%; height: 140px;
+            background: rgba(0,0,0,0.95); 
+            border-top: 6px solid #ffcc00; 
+            display: flex; align-items: center; overflow: hidden;
+            position: absolute; bottom: 0;
+        }
+
+        .ticker-wrap { width: 100%; overflow: hidden; }
+
+        .headline-text { 
+            display: inline-block; white-space: nowrap;
+            color: #fff; font-size: 48px; font-weight: 800; 
+            padding-left: 100%;
+            animation: ticker linear infinite;
+        }
+
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        #start-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: radial-gradient(circle, #333, #000); 
+            z-index: 9999; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; cursor: pointer; color: #ffcc00; 
+        }
     </style>
 </head>
 <body>
 
     <div id="start-screen" onclick="launchStudio()">
-        <h1>PTN PCR STUDIO [ START ]</h1>
+        <div style="text-align: center;">
+            <h1 style="font-size: 60px; margin: 0; text-shadow: 0 0 10px #ffcc00;">PTN PCR STUDIO</h1>
+            <p style="color: white; font-size: 24px;">[ CLICK TO START ]</p>
+        </div>
     </div>
 
     <div class="pcr-controls">
@@ -53,10 +96,12 @@
     <video id="reporter-video" playsinline loop muted></video>
 
     <div class="ui-overlay">
-        <div class="breaking-tag">LIVE REPORTING</div>
+        <div class="breaking-tag">BREAKING NEWS</div>
         <div id="reporter-tag" class="rep-label">Connecting...</div>
         <div class="headline-box">
-            <div class="ticker-wrap"><p id="headline-display" class="headline-text"></p></div>
+            <div class="ticker-wrap">
+                <p id="headline-display" class="headline-text"></p>
+            </div>
         </div>
     </div>
 
@@ -65,33 +110,48 @@
         let index = 0;
         let isAudioOn = false;
         const video = document.getElementById('reporter-video');
+        
+        // 🛑 अपना WEB APP URL यहाँ पेस्ट करें
         const apiURL = "https://script.google.com/macros/s/AKfycbw8-ZsDpegl6_fUrj7NWHu9V9zD6eVgY5l0af0z6d5Vv-BE-p9GKO2xI_Qkn2s7UQ86/exec"; 
 
         async function loadNews() {
             try {
-                const res = await fetch(apiURL);
+                // '?t=' जोड़ने से ब्राउज़र हर बार नया डेटा उठाएगा
+                const res = await fetch(apiURL + "?t=" + new Date().getTime());
                 newsData = await res.json();
             } catch (e) { console.error("Sync Error"); }
         }
 
         function playBulletin() {
-            if (newsData.length === 0) { setTimeout(startProcess, 3000); return; }
+            if (newsData.length === 0) {
+                setTimeout(startProcess, 3000);
+                return;
+            }
+
             const item = newsData[index];
-            
-            document.getElementById('reporter-tag').innerText = "रिपोर्टर: " + item.reporter;
             const headlineEl = document.getElementById('headline-display');
-            headlineEl.innerText = item.text;
             
-            // टिकर रीसेट
+            // UI Update
+            document.getElementById('reporter-tag').innerText = "रिपोर्टर: " + item.reporter;
+            
+            // Ticker Logic
             headlineEl.style.animation = 'none';
             headlineEl.offsetHeight; 
+            headlineEl.innerText = item.text;
             const duration = Math.max(15, item.text.length / 8); 
             headlineEl.style.animation = `ticker ${duration}s linear infinite`;
 
-            video.src = item.videoUrl;
-            video.load();
-            video.play();
+            // Video Load
+            video.style.opacity = 0;
+            setTimeout(() => {
+                video.src = item.videoUrl;
+                video.load();
+                video.play().then(() => {
+                    video.style.opacity = 1;
+                }).catch(e => console.log("Video Play Error"));
+            }, 500);
 
+            // Voice Logic
             handleSpeechAndAudio(item.text);
         }
 
