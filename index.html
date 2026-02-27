@@ -2,14 +2,19 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>PTN NEWS - PCR EDITION</title>
+    <title>PTN NEWS - PCR PCR CONTROL</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@700;900&display=swap');
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Noto Sans Devanagari', sans-serif; }
         #reporter-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; background: #000; }
+        
+        /* PCR बटन्स - अब ये बाईं तरफ दिखेंगे ताकी लोगो से न टकराएं */
         .pcr-controls { position: absolute; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-        .pcr-btn { background: rgba(204, 0, 0, 0.9); color: #fff; border: 2px solid #ffcc00; padding: 12px 24px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 8px; pointer-events: all; }
+        .pcr-btn { background: rgba(204, 0, 0, 0.9); color: #fff; border: 2px solid #ffcc00; padding: 12px 24px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 8px; }
+        .pcr-btn:active { transform: scale(0.95); }
         .active-audio { background: #008000 !important; }
+
+        /* ग्राफिक्स */
         .ui-overlay { position: relative; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
         .breaking-tag { position: absolute; top: 50px; right: 0; background: linear-gradient(90deg, #ff0000, #cc0000); color: #fff; padding: 15px 40px; font-size: 40px; font-weight: 900; border-left: 10px solid #ffcc00; }
         .rep-label { position: absolute; bottom: 160px; left: 20px; background: rgba(0,0,0,0.85); color: #ffcc00; padding: 8px 25px; font-size: 26px; border-left: 6px solid #ffcc00; }
@@ -21,7 +26,7 @@
     </style>
 </head>
 <body>
-    <div id="start-screen" onclick="launchStudio()"><h1>PTN PCR START</h1></div>
+    <div id="start-screen" onclick="launchStudio()"><h1>PTN PCR ENGINE [ START ]</h1></div>
     <div class="pcr-controls">
         <button id="btn-audio" class="pcr-btn" onclick="toggleAudio()">🔊 AUDIO: OFF</button>
         <button class="pcr-btn" onclick="replayNews()">🔄 REPLAY</button>
@@ -38,11 +43,11 @@
         const video = document.getElementById('reporter-video');
         const apiURL = "https://script.google.com/macros/s/AKfycbw8-ZsDpegl6_fUrj7NWHu9V9zD6eVgY5l0af0z6d5Vv-BE-p9GKO2xI_Qkn2s7UQ86/exec"; 
 
-        async function loadNews() { try { const res = await fetch(apiURL + "?t=" + new Date().getTime()); newsData = await res.json(); } catch (e) { console.log("Error"); } }
+        async function loadNews() { try { const res = await fetch(apiURL); newsData = await res.json(); } catch (e) { console.log("Sync Error"); } }
         function playBulletin() {
             if (newsData.length === 0) { setTimeout(startProcess, 3000); return; }
             const item = newsData[index];
-            document.getElementById('reporter-tag').innerText = "Reporter: " + item.reporter;
+            document.getElementById('reporter-tag').innerText = "रिपोर्टर: " + item.reporter;
             const headlineEl = document.getElementById('headline-display');
             headlineEl.innerText = item.text;
             headlineEl.style.animation = 'none'; headlineEl.offsetHeight; 
@@ -53,16 +58,22 @@
         function handleVoice(text) {
             window.speechSynthesis.cancel();
             if (!isAudioOn) {
-                const speech = new SpeechSynthesisUtterance("Badi Khabar. " + text);
+                const speech = new SpeechSynthesisUtterance("बड़ी खबर। " + text);
                 speech.lang = 'hi-IN'; speech.rate = 0.85;
                 speech.onend = () => { if(!isAudioOn) setTimeout(nextNews, 4000); };
                 window.speechSynthesis.speak(speech);
             }
         }
         function toggleAudio() {
-            isAudioOn = !isAudioOn; const btn = document.getElementById('btn-audio');
-            if (isAudioOn) { video.muted = false; window.speechSynthesis.cancel(); btn.innerText = "🔊 AUDIO: ON"; btn.classList.add('active-audio'); }
-            else { video.muted = true; btn.innerText = "🔊 AUDIO: OFF"; btn.classList.remove('active-audio'); handleVoice(newsData[index].text); }
+            isAudioOn = !isAudioOn;
+            const btn = document.getElementById('btn-audio');
+            if (isAudioOn) {
+                video.muted = false; window.speechSynthesis.cancel();
+                btn.innerText = "🔊 AUDIO: ON"; btn.classList.add('active-audio');
+            } else {
+                video.muted = true; btn.innerText = "🔊 AUDIO: OFF"; btn.classList.remove('active-audio');
+                handleVoice(newsData[index].text);
+            }
         }
         function replayNews() { playBulletin(); }
         function nextNews() { index = (index + 1) % newsData.length; loadNews().then(playBulletin); }
