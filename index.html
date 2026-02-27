@@ -14,7 +14,7 @@
             transition: opacity 0.5s ease-in-out;
         }
 
-        /* PCR कंट्रोल पैनल - अब और साफ़ दिखेगा */
+        /* PCR कंट्रोल पैनल */
         .pcr-controls {
             position: absolute; top: 20px; right: 20px; z-index: 100;
             display: flex; gap: 10px; pointer-events: auto;
@@ -29,6 +29,15 @@
 
         .pcr-btn:hover { background: #cc0000; color: white; }
         .pcr-btn.active { background: #008000; border-color: white; }
+
+        /* वीडियो टाइमर - अब स्क्रीन पर दिखेगा */
+        .video-timer {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            background: rgba(0, 0, 0, 0.7); color: #ffcc00;
+            padding: 10px 20px; font-size: 20px; font-weight: bold;
+            border-radius: 8px; border: 1px solid #ffcc00;
+            font-family: monospace;
+        }
 
         /* ओवरले डिज़ाइन */
         .ui-overlay { position: relative; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
@@ -81,6 +90,8 @@
         <h1 style="font-size: 50px;">PTN PCR MASTER [ START ]</h1>
     </div>
 
+    <div id="v-timer" class="video-timer">00:00 / 00:00</div>
+
     <div class="pcr-controls">
         <button id="audio-toggle" class="pcr-btn" onclick="toggleAudio()">🔊 AUDIO: OFF</button>
         <button class="pcr-btn" onclick="replayNews()">🔄 REPLAY</button>
@@ -104,7 +115,9 @@
         let index = 0;
         let isAudioOn = false;
         let newsTimer;
+        let timeUpdateInterval;
         const video = document.getElementById('reporter-video');
+        const timerDisplay = document.getElementById('v-timer');
         
         // 🛑 अपना WEB APP URL यहाँ पेस्ट करें
         const apiURL = "https://script.google.com/macros/s/AKfycbw8-ZsDpegl6_fUrj7NWHu9V9zD6eVgY5l0af0z6d5Vv-BE-p9GKO2xI_Qkn2s7UQ86/exec"; 
@@ -114,6 +127,13 @@
                 const res = await fetch(apiURL + "?t=" + new Date().getTime());
                 newsData = await res.json();
             } catch (e) { console.error("Sync Error"); }
+        }
+
+        // टाइमर फॉर्मेट करने का फंक्शन
+        function formatTime(seconds) {
+            let min = Math.floor(seconds / 60);
+            let sec = Math.floor(seconds % 60);
+            return (min < 10 ? "0" + min : min) + ":" + (sec < 10 ? "0" + sec : sec);
         }
 
         function playBulletin() {
@@ -143,24 +163,28 @@
                 video.style.opacity = 1;
             }).catch(e => console.log("Video Play Error"));
 
-            // **ड्यूरेशन-अवेयर लॉजिक**
+            // **ड्यूरेशन टाइमर लॉजिक**
+            clearInterval(timeUpdateInterval);
+            timeUpdateInterval = setInterval(() => {
+                if (video.duration) {
+                    timerDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
+                }
+            }, 1000);
+
             handleSpeechAndAudio(item.text);
         }
 
         function handleSpeechAndAudio(text) {
             window.speechSynthesis.cancel();
-            clearTimeout(newsTimer); // पुराना टाइमर हटाएं
+            clearTimeout(newsTimer);
 
             if (isAudioOn) {
-                // अगर ऑडियो ON है, तो वीडियो की ड्यूरेशन तक चलने दें
                 video.muted = false;
                 video.volume = 1.0;
-                
                 // वीडियो खत्म होने पर या 30 सेकंड बाद (जो पहले हो) अगली न्यूज़
                 video.onended = () => { if(isAudioOn) nextNews(); };
                 newsTimer = setTimeout(nextNews, 30000);
             } else {
-                // अगर ऑडियो OFF है, तो TTS एंकर बोलेगा
                 video.muted = true;
                 const speech = new SpeechSynthesisUtterance("बड़ी खबर । " + text);
                 speech.lang = 'hi-IN';
@@ -186,7 +210,6 @@
                 btn.innerText = "🔊 AUDIO: OFF";
                 btn.classList.remove('active');
             }
-            // ऑडियो स्टेट बदलने पर फंक्शन फिर से चलाएं
             handleSpeechAndAudio(newsData[index].text);
         }
 
@@ -195,8 +218,9 @@
         }
 
         function nextNews() {
-            window.speechSynthesis.cancel(); // TTS बंद करें
-            clearTimeout(newsTimer); // टाइमर बंद करें
+            window.speechSynthesis.cancel();
+            clearTimeout(newsTimer);
+            clearInterval(timeUpdateInterval); // टाइमर बंद करें
             index = (index + 1) % newsData.length;
             loadNews().then(playBulletin);
         }
