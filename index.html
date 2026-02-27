@@ -2,33 +2,32 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>PTN NEWS - PCR CONTROL EDITION</title>
+    <title>PTN NEWS - PCR MASTER EDITION</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@700;900&display=swap');
         
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Noto Sans Devanagari', sans-serif; }
         
-        /* वीडियो प्लेयर: अब ज़ूम नहीं होगा, ओरिजिनल रेश्यो में रहेगा */
         #reporter-video { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             object-fit: contain; z-index: 1; background: #000; 
             transition: opacity 0.5s ease-in-out;
         }
 
-        /* PCR कंट्रोल पैनल (बटन) */
+        /* PCR कंट्रोल पैनल - अब और साफ़ दिखेगा */
         .pcr-controls {
             position: absolute; top: 20px; right: 20px; z-index: 100;
             display: flex; gap: 10px; pointer-events: auto;
         }
 
         .pcr-btn {
-            background: rgba(204, 0, 0, 0.8); color: white; border: 2px solid #ffcc00;
-            padding: 10px 20px; font-size: 18px; font-weight: bold; cursor: pointer;
-            border-radius: 5px; transition: 0.3s; pointer-events: all;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.7); color: white; border: 2px solid #ffcc00;
+            padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer;
+            border-radius: 8px; transition: 0.3s; pointer-events: all;
+            backdrop-filter: blur(5px);
         }
 
-        .pcr-btn:hover { background: #ffcc00; color: black; }
+        .pcr-btn:hover { background: #cc0000; color: white; }
         .pcr-btn.active { background: #008000; border-color: white; }
 
         /* ओवरले डिज़ाइन */
@@ -39,7 +38,6 @@
             background: linear-gradient(90deg, #cc0000, #ff0000); 
             color: #fff; padding: 15px 40px; font-size: 40px; font-weight: 900; 
             border-right: 10px solid #ffcc00; 
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
         }
 
         .rep-label { 
@@ -49,7 +47,7 @@
         }
 
         .headline-box { 
-            width: 100%; height: 140px;
+            width: 100%; height: 150px;
             background: rgba(0,0,0,0.95); 
             border-top: 6px solid #ffcc00; 
             display: flex; align-items: center; overflow: hidden;
@@ -72,8 +70,7 @@
 
         #start-screen { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: radial-gradient(circle, #333, #000); 
-            z-index: 9999; display: flex; flex-direction: column; 
+            background: #000; z-index: 9999; display: flex; 
             justify-content: center; align-items: center; cursor: pointer; color: #ffcc00; 
         }
     </style>
@@ -81,10 +78,7 @@
 <body>
 
     <div id="start-screen" onclick="launchStudio()">
-        <div style="text-align: center;">
-            <h1 style="font-size: 60px; margin: 0; text-shadow: 0 0 10px #ffcc00;">PTN PCR STUDIO</h1>
-            <p style="color: white; font-size: 24px;">[ CLICK TO START ]</p>
-        </div>
+        <h1 style="font-size: 50px;">PTN PCR MASTER [ START ]</h1>
     </div>
 
     <div class="pcr-controls">
@@ -93,7 +87,7 @@
         <button class="pcr-btn" onclick="nextNews()">⏭ NEXT</button>
     </div>
 
-    <video id="reporter-video" playsinline loop muted></video>
+    <video id="reporter-video" playsinline loop></video>
 
     <div class="ui-overlay">
         <div class="breaking-tag">BREAKING NEWS</div>
@@ -109,6 +103,7 @@
         let newsData = [];
         let index = 0;
         let isAudioOn = false;
+        let newsTimer;
         const video = document.getElementById('reporter-video');
         
         // 🛑 अपना WEB APP URL यहाँ पेस्ट करें
@@ -116,7 +111,6 @@
 
         async function loadNews() {
             try {
-                // '?t=' जोड़ने से ब्राउज़र हर बार नया डेटा उठाएगा
                 const res = await fetch(apiURL + "?t=" + new Date().getTime());
                 newsData = await res.json();
             } catch (e) { console.error("Sync Error"); }
@@ -133,36 +127,48 @@
             
             // UI Update
             document.getElementById('reporter-tag').innerText = "रिपोर्टर: " + item.reporter;
+            headlineEl.innerText = item.text;
             
             // Ticker Logic
             headlineEl.style.animation = 'none';
             headlineEl.offsetHeight; 
-            headlineEl.innerText = item.text;
             const duration = Math.max(15, item.text.length / 8); 
             headlineEl.style.animation = `ticker ${duration}s linear infinite`;
 
             // Video Load
             video.style.opacity = 0;
-            setTimeout(() => {
-                video.src = item.videoUrl;
-                video.load();
-                video.play().then(() => {
-                    video.style.opacity = 1;
-                }).catch(e => console.log("Video Play Error"));
-            }, 500);
+            video.src = item.videoUrl;
+            video.load();
+            video.play().then(() => {
+                video.style.opacity = 1;
+            }).catch(e => console.log("Video Play Error"));
 
-            // Voice Logic
+            // **ड्यूरेशन-अवेयर लॉजिक**
             handleSpeechAndAudio(item.text);
         }
 
         function handleSpeechAndAudio(text) {
             window.speechSynthesis.cancel();
-            if (!isAudioOn) {
-                // अगर ऑडियो OFF है तो एंकर बोलेगा
+            clearTimeout(newsTimer); // पुराना टाइमर हटाएं
+
+            if (isAudioOn) {
+                // अगर ऑडियो ON है, तो वीडियो की ड्यूरेशन तक चलने दें
+                video.muted = false;
+                video.volume = 1.0;
+                
+                // वीडियो खत्म होने पर या 30 सेकंड बाद (जो पहले हो) अगली न्यूज़
+                video.onended = () => { if(isAudioOn) nextNews(); };
+                newsTimer = setTimeout(nextNews, 30000);
+            } else {
+                // अगर ऑडियो OFF है, तो TTS एंकर बोलेगा
+                video.muted = true;
                 const speech = new SpeechSynthesisUtterance("बड़ी खबर । " + text);
                 speech.lang = 'hi-IN';
                 speech.rate = 0.85;
-                speech.onend = () => { if(!isAudioOn) setTimeout(nextNews, 4000); };
+                
+                speech.onend = () => {
+                    if(!isAudioOn) newsTimer = setTimeout(nextNews, 3000);
+                };
                 window.speechSynthesis.speak(speech);
             }
         }
@@ -172,19 +178,16 @@
         function toggleAudio() {
             const btn = document.getElementById('audio-toggle');
             isAudioOn = !isAudioOn;
+            
             if (isAudioOn) {
-                video.muted = false;
-                video.volume = 1.0;
-                window.speechSynthesis.cancel(); // एंकर को चुप करें
                 btn.innerText = "🔊 AUDIO: ON";
                 btn.classList.add('active');
             } else {
-                video.muted = true;
                 btn.innerText = "🔊 AUDIO: OFF";
                 btn.classList.remove('active');
-                // एंकर को दोबारा शुरू करें जहाँ न्यूज़ चल रही है
-                handleSpeechAndAudio(newsData[index].text);
             }
+            // ऑडियो स्टेट बदलने पर फंक्शन फिर से चलाएं
+            handleSpeechAndAudio(newsData[index].text);
         }
 
         function replayNews() {
@@ -192,6 +195,8 @@
         }
 
         function nextNews() {
+            window.speechSynthesis.cancel(); // TTS बंद करें
+            clearTimeout(newsTimer); // टाइमर बंद करें
             index = (index + 1) % newsData.length;
             loadNews().then(playBulletin);
         }
