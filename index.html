@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>PTN NEWS - PCR CONTROL EDITION</title>
+    <title>PTN NEWS - PCR MASTER CONTROL</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@700;900&display=swap');
         
@@ -10,7 +10,7 @@
         
         #reporter-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; background: #000; }
 
-        /* PCR कंट्रोल पैनल (बटन) */
+        /* PCR कंट्रोल पैनल */
         .pcr-controls {
             position: absolute; top: 20px; right: 20px; z-index: 100;
             display: flex; gap: 10px; pointer-events: auto;
@@ -24,6 +24,14 @@
 
         .pcr-btn:hover { background: #ffcc00; color: black; }
         .pcr-btn.active { background: #008000; border-color: white; }
+
+        /* टाइमर मीटर */
+        .timer-display {
+            position: absolute; bottom: 150px; right: 20px; z-index: 100;
+            background: rgba(0, 0, 0, 0.7); color: #ffcc00; padding: 8px 15px;
+            font-size: 20px; font-weight: bold; border-radius: 5px;
+            border: 1px solid #ffcc00; pointer-events: none;
+        }
 
         /* ओवरले डिज़ाइन */
         .ui-overlay { position: relative; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
@@ -50,6 +58,8 @@
         <button class="pcr-btn" onclick="nextNews()">⏭ NEXT</button>
     </div>
 
+    <div id="timer" class="timer-display">00:00 / 00:00</div>
+
     <video id="reporter-video" playsinline loop muted></video>
 
     <div class="ui-overlay">
@@ -64,7 +74,7 @@
         let newsData = [];
         let index = 0;
         let isAudioOn = false;
-        let currentUtterance = null;
+        let timerInterval = null;
         const video = document.getElementById('reporter-video');
         const apiURL = "https://script.google.com/macros/s/AKfycbxdC0A-qyh_zT4zIcXWsWoCpNfkooytB-B0z3UXTWyWDqseUVHZOd6iQIweMx4vI0GfZA/exec"; 
 
@@ -79,34 +89,53 @@
             if (newsData.length === 0) { setTimeout(startProcess, 3000); return; }
             const item = newsData[index];
             
+            // 1. डेटा अपडेट
             document.getElementById('reporter-tag').innerText = "रिपोर्टर: " + item.reporter;
             const headlineEl = document.getElementById('headline-display');
             headlineEl.innerText = item.text;
             
+            // 2. टिकर रीसेट
             headlineEl.style.animation = 'none';
             headlineEl.offsetHeight; 
             const duration = Math.max(15, item.text.length / 8); 
             headlineEl.style.animation = `ticker ${duration}s linear infinite`;
 
+            // 3. वीडियो
             video.src = item.videoUrl;
             video.load();
             video.play();
 
             handleSpeechAndAudio(item.text);
+            startTimer();
         }
 
         function handleSpeechAndAudio(text) {
-            // पुरानी आवाज़ बंद करें
             window.speechSynthesis.cancel();
             
             if (!isAudioOn) {
                 // अगर ऑडियो OFF है तो एंकर बोलेगा
-                currentUtterance = new SpeechSynthesisUtterance("बड़ी खबर । " + text);
-                currentUtterance.lang = 'hi-IN';
-                currentUtterance.rate = 0.85;
-                currentUtterance.onend = () => { if(!isAudioOn) setTimeout(nextNews, 4000); };
-                window.speechSynthesis.speak(currentUtterance);
+                const speech = new SpeechSynthesisUtterance("बड़ी खबर । " + text);
+                speech.lang = 'hi-IN';
+                speech.rate = 0.85;
+                speech.onend = () => { if(!isAudioOn) setTimeout(nextNews, 4000); };
+                window.speechSynthesis.speak(speech);
             }
+        }
+
+        // --- टाइमर लॉजिक ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            const timerEl = document.getElementById('timer');
+            
+            timerInterval = setInterval(() => {
+                if (video.duration) {
+                    const current = Math.floor(video.currentTime);
+                    const total = Math.floor(video.duration);
+                    
+                    const format = (s) => (s < 10 ? '0' : '') + s;
+                    timerEl.innerText = `${format(Math.floor(current/60))}:${format(current%60)} / ${format(Math.floor(total/60))}:${format(total%60)}`;
+                }
+            }, 1000);
         }
 
         // --- PCR कंट्रोल फंक्शन्स ---
@@ -117,24 +146,25 @@
             if (isAudioOn) {
                 video.muted = false;
                 video.volume = 1.0;
-                // एंकर की आवाज़ को पूरी तरह बंद करें
-                window.speechSynthesis.cancel();
+                window.speechSynthesis.cancel(); // एंकर को चुप करें
                 btn.innerText = "🔊 AUDIO: ON";
                 btn.classList.add('active');
             } else {
                 video.muted = true;
                 btn.innerText = "🔊 AUDIO: OFF";
                 btn.classList.remove('active');
-                // एंकर को दोबारा शुरू करें
                 handleSpeechAndAudio(newsData[index].text);
             }
         }
 
         function replayNews() {
-            playBulletin();
+            video.currentTime = 0;
+            video.play();
+            handleSpeechAndAudio(newsData[index].text);
         }
 
         function nextNews() {
+            window.speechSynthesis.cancel(); // एंकर को तुरंत रोकें
             index = (index + 1) % newsData.length;
             loadNews().then(playBulletin);
         }
